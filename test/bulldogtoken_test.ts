@@ -1,5 +1,5 @@
 const {expect} = require('chai');
-// const { ethers } = require('ethers');
+const { ethers } = require('ethers');
 
 describe('Token contract', () => {
    let Token, token, owner, addr1, addr2;
