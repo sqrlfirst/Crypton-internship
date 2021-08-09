@@ -1,0 +1,8 @@
+.env
+.vscode
+some_data.txt
+node_modules
+
+#Hardhat files
+cache
+artifacts
