@@ -34,7 +34,7 @@ contract BullDogToken {
     */
     function transfer(address _to, uint256 _amount) external {
         require(_to != address(0), "transfer:: address is 0");
-        require(balances[msg.sender] >= _amount, "You need more tokens");
+        require(balances[msg.sender] >= _amount, "transfer:: You need more tokens");
         balances[msg.sender] -= _amount;
         balances[_to] += _amount;
         emit transfer_(msg.sender, _to, _amount);
@@ -72,7 +72,7 @@ contract BullDogToken {
         return true;
     }
 
-    function allowance(address _to/*, uint256 _value*/) public returns (uint256) {
+    function allowance(address _to) public returns (uint256) {
         require(_to != address(0), "allowance:: address _to is 0");
         console.log('Alloweded %s tokens', allowed[msg.sender][_to]);
         return allowed[msg.sender][_to];
@@ -81,7 +81,7 @@ contract BullDogToken {
     function decreaseAllowance(address _to, uint256 _sub_value) public returns (bool) {
         require(_to != address(0), "decreaseAllowance:: address _to is 0");
         require(msg.sender != address(0), "decreaseAllowance:: sender address is 0");
-        require(msg.sender != _to, "decreaseAllowance:: useless, addresses are the same");
+        require(msg.sender != _to, "decreaseAllowance:: useless, addresses are the same"); // is it needed?
         require(allowed[msg.sender][_to] > _sub_value, "decreaseAllowance:: _sub_value is bigger than allowance"); // underflow check
         allowed[msg.sender][_to] -= _sub_value;
         return true;
@@ -102,8 +102,9 @@ contract BullDogToken {
 
     function mint(address _account, uint256 _amount) public returns (bool) {
         require(_account != address(0), "mint:: address _account is 0");
+        require(msg.sender == owner, "mint:: access denied");
 
-        balances[_account] -= _amount;
+        balances[_account] += _amount;
         totalSupply += _amount;
         emit transfer_(address(0), _account, _amount);
         return true;
@@ -111,8 +112,9 @@ contract BullDogToken {
 
     function burn(address _account, uint256 _amount) public returns (bool) {
         require(_account != address(0), "burn:: address _account is 0");
-
-        balances[_account] += _amount;
+        require(msg.sender == owner, "burn:: access denied");
+        require(balances[_account] >= _amount, "burn:: _amount is bigger than balance");
+        balances[_account] -= _amount;
         totalSupply -= _amount;
         emit transfer_(_account, address(0), _amount);
         return true;
