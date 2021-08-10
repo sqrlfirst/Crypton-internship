@@ -17,12 +17,13 @@ describe('BullDog Token contract', () => {
     let owner: SignerWithAddress;
     let addr1: SignerWithAddress;
     let addr2: SignerWithAddress;
+    let addr3: SignerWithAddress;
    
     before(async function() {
         const Token = await ethers.getContractFactory('BullDogToken');
         const tokenDP = await Token.deploy();
         token = await tokenDP.deployed();
-        [owner, addr1, addr2] = await ethers.getSigners();
+        [owner, addr1, addr2, addr3] = await ethers.getSigners();
     });
 
     describe('Deployment', function() {
@@ -76,9 +77,9 @@ describe('BullDog Token contract', () => {
             await token.transfer(addr1.address, 50);
             let addr1Balance = await token.balanceOf(addr1.address);
             await token.approve(addr1.address, addr1Balance);
-            expect(await token.allowance(addr1.address))
-                .to.be.equal(addr1Balance);
-            expect(await token.transferFrom(addr1.address, owner.address, 60))
+            expect( await token.allowance(addr1.address))
+                .to.equal(addr1Balance);
+            await expect(token.transferFrom(addr1.address, owner.address, 60))
                 .to.be.revertedWith("transferFrom:: amount is not allowed");
         });
 
@@ -86,10 +87,10 @@ describe('BullDog Token contract', () => {
         mocha.step('Test 6 Check balances after operations',async function() {
             await token.transfer(addr1.address, trans_cash);
             let addr1Balance = await token.balanceOf(addr1.address);
-            await token.connect(addr1.address).approve(addr2.address, trans_cash);
+            await token.connect(addr1).approve(addr2.address, trans_cash);
             await token.transferFrom(addr1.address, addr2.address, trans_cash);
             expect(await token.balanceOf(addr2.address))
-                .to.be.equal(addr1Balance);
+                .to.equal(trans_cash);
         });
 
     });
@@ -106,25 +107,23 @@ describe('BullDog Token contract', () => {
         });
 
         mocha.step('Test 2 balance > _value requiring',async function() {
-            await token.transfer(addr1.address, 10);
-            expect(await token.connect(addr1.address).approve(addr2.address, 11))
+            await token.transfer(addr1.address, trans_cash);
+            let addr1Balance = await token.balanceOf(addr1.address);
+            await expect( token.connect(addr1).approve(addr2.address, addr1Balance+10))
                 .to.be.revertedWith("approve:: balance is low");
         });
         
         mocha.step('Test 3 then allowance == amount after',async function() {
-            await token.transfer(addr1.address, trans_cash);
-            expect(await token.balanceOf(addr1))
-                .to.be.equal(trans_cash);
-            await token.connect(addr1.address).approve(addr2.address, trans_cash);
-            expect(await token.connect(addr1.address).allowance(addr2.address))
-                .to.be.equal(trans_cash); 
+            await token.connect(addr1).approve(addr2.address, trans_cash);
+            expect(await token.connect(addr1).allowance(addr2.address))
+                .to.equal(trans_cash); 
         });
         
         /*
          * allowance() tests begins
          */
         mocha.step('Test 4 address _to != 0 requiring ',async function() {
-            expect(await token.allowance(ZERO_ADDR))
+            await expect( token.allowance(ZERO_ADDR))
                 .to.be.revertedWith("allowance:: address _to is 0");
         });
         
@@ -133,36 +132,31 @@ describe('BullDog Token contract', () => {
          */
 
         mocha.step('Test 5_1 address _to are not equal 0 requiring ',async function() {
-            expect(await token.decreaseAllowance(ZERO_ADDR, trans_cash))
+            await expect(token.decreaseAllowance(ZERO_ADDR, trans_cash))
                 .to.be.revertedWith("decreaseAllowance:: address _to is 0");
         });
         
-        mocha.step('Test 5_2 address sender are not equal 0 requiring ',async function() {
-            expect(await token.connect(ZERO_ADDR).decreaseAllowance(addr1.address, trans_cash))
-                .to.be.revertedWith("decreaseAllowance:: sender address is 0");
-        });
+        // mocha.step('Test 5_2 address sender are not equal 0 requiring ',async function() {
+        //     await expect(token.connect(ZERO_ADDR).decreaseAllowance(addr1.address, trans_cash))
+        //         .to.be.revertedWith("decreaseAllowance:: sender address is 0");
+        // });
 
         mocha.step('Test 6 _sub_value is greater than alloweded',async function() {
             await token.transfer(addr1.address, trans_cash);
-            expect(await token.balanceOf(addr1))
-                .to.be.equal(trans_cash);
-            await token.connect(addr1.address).approve(addr2.address, trans_cash);
-            expect(await token.connect(addr1.address).allowance(addr2.address))
-                .to.be.equal(trans_cash); 
-            expect(await token.connect(addr1.address).decreaseAllowance(addr2.address, trans_cash+10))
+            await token.connect(addr1).approve(addr2.address, trans_cash);
+            expect(await token.connect(addr1).allowance(addr2.address))
+                .to.equal(trans_cash); 
+            await expect(token.connect(addr1).decreaseAllowance(addr2.address, trans_cash+10))
                 .to.be.revertedWith("decreaseAllowance:: _sub_value is bigger than allowance");
         });
 
         mocha.step('Test 7 _sub_value is less than alloweded(all OK)',async function() {
-            await token.transfer(addr1.address, trans_cash);
-            expect(await token.balanceOf(addr1))
-                .to.be.equal(trans_cash);
-            await token.connect(addr1.address).approve(addr2.address, trans_cash);
-            expect(await token.connect(addr1.address).allowance(addr2.address))
-                .to.be.equal(trans_cash); 
-            await token.connect(addr1.address).decreaseAllowance(addr2.address,10);
-            expect(await token.connect(addr1.address).allowance(addr2.address))
-                .to.be.equal(trans_cash-10); 
+            await token.connect(addr1).approve(addr2.address, trans_cash);
+            expect(await token.connect(addr1).allowance(addr2.address))
+                .to.equal(trans_cash); 
+            await token.connect(addr1).decreaseAllowance(addr2.address,10);
+            expect(await token.connect(addr1).allowance(addr2.address))
+                .to.equal(trans_cash-10); 
         });
          
 
@@ -171,45 +165,35 @@ describe('BullDog Token contract', () => {
         */
        
        mocha.step('Test 8_1 address _to are not equal 0 requiring',async function() {
-            expect(await token.increaseAllowance(ZERO_ADDR, trans_cash))
+            await expect( token.increaseAllowance(ZERO_ADDR, trans_cash))
                 .to.be.revertedWith("inreaseAllowance:: address _to is 0");
        });
-       
 
-        mocha.step('Test 8_2 address sender are not equal 0 requiring',async function() {
-            expect(await token.connect(ZERO_ADDR).increaseAllowance(addr1.address, trans_cash))
-                .to.be.revertedWith("inreaseAllowance:: address sender is 0");
-        });
+        // mocha.step('Test 8_2 address sender are not equal 0 requiring',async function() {
+        //     expect(await token.connect(ZERO_ADDR).increaseAllowance(addr1.address, trans_cash))
+        //         .to.be.revertedWith("inreaseAllowance:: address sender is 0");
+        // });
 
        mocha.step('Test 9 resulting values are less than spender balance',async function() {
-            await token.transfer(addr1.address, trans_cash);
-            expect(await token.balanceOf(addr1))
-                .to.be.equal(trans_cash);
-            await token.connect(addr1.address).approve(addr2.address, trans_cash);
-            expect(await token.connect(addr1.address).allowance(addr2.address))
-                .to.be.equal(trans_cash); 
-            expect(await token.connect(addr1.address).increaseAllowance(addr2.address, 10))
+            await token.connect(addr1).approve(addr2.address, trans_cash);
+            let balanceAddr1 = await token.balanceOf(addr1.address);
+            expect(await token.connect(addr1).allowance(addr2.address))
+                .to.equal(trans_cash); 
+            await expect(token.connect(addr1).increaseAllowance(addr2.address, balanceAddr1))
                 .to.be.revertedWith("inreaseAllowance:: resulted value is bigger than balance");
-
        });
 
        mocha.step('Test 10 resulting values are greater than spender balance', async function() {
             await token.transfer(addr1.address, trans_cash);
-            expect(await token.balanceOf(addr1))
-                .to.be.equal(trans_cash);
-            await token.connect(addr1.address).approve(addr2.address, trans_cash);
-            expect(await token.connect(addr1.address).allowance(addr2.address))
-                .to.be.equal(trans_cash); 
-            await token.connect(addr1.address).decreaseAllowance(addr2.address, 10);
-            expect(await token.connect(addr1.address).allowance(addr2.address))
-                .to.be.equal(trans_cash-10); 
-            await token.connect(addr1.address).increaseAllowance(addr2.address, 10);
-            expect(await token.connect(addr1.address).allowance(addr2.address))
-                .to.be.equal(trans_cash); 
+            await token.connect(addr1).approve(addr2.address, trans_cash);
+            expect(await token.connect(addr1).allowance(addr2.address))
+                .to.equal(trans_cash); 
+            await token.connect(addr1).decreaseAllowance(addr2.address, 10);
+            expect(await token.connect(addr1).allowance(addr2.address))
+                .to.equal(trans_cash-10); 
+            await token.connect(addr1).increaseAllowance(addr2.address, 10);
+            expect(await token.connect(addr1).allowance(addr2.address))
+                .to.equal(trans_cash); 
        });
-
-
     });
-
-
 }); 
