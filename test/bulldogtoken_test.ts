@@ -135,11 +135,6 @@ describe('BullDog Token contract', () => {
             await expect(token.decreaseAllowance(ZERO_ADDR, trans_cash))
                 .to.be.revertedWith("decreaseAllowance:: address _to is 0");
         });
-        
-        // mocha.step('Test 5_2 address sender are not equal 0 requiring ',async function() {
-        //     await expect(token.connect(ZERO_ADDR).decreaseAllowance(addr1.address, trans_cash))
-        //         .to.be.revertedWith("decreaseAllowance:: sender address is 0");
-        // });
 
         mocha.step('Test 6 _sub_value is greater than alloweded',async function() {
             await token.transfer(addr1.address, trans_cash);
@@ -168,11 +163,6 @@ describe('BullDog Token contract', () => {
             await expect( token.increaseAllowance(ZERO_ADDR, trans_cash))
                 .to.be.revertedWith("inreaseAllowance:: address _to is 0");
        });
-
-        // mocha.step('Test 8_2 address sender are not equal 0 requiring',async function() {
-        //     expect(await token.connect(ZERO_ADDR).increaseAllowance(addr1.address, trans_cash))
-        //         .to.be.revertedWith("inreaseAllowance:: address sender is 0");
-        // });
 
        mocha.step('Test 9 resulting values are less than spender balance',async function() {
             await token.connect(addr1).approve(addr2.address, trans_cash);

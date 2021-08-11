@@ -1,8 +1,8 @@
-// const { ethers } = require("ethers");
+import {ethers} from "hardhat";
 
 async function main() {
     const [deployer] = await ethers.getSigners();
-    console.log(`Deploying contracts with the account: ${deployer.addres}`);
+    console.log(`Deploying contracts with the account: ${deployer.address}`);
     
     const balance = await deployer.getBalance();
     console.log(`Account balance: ${balance.toString()}`);

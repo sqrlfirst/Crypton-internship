@@ -26,6 +26,7 @@ contract BullDogToken {
    
 
     function balanceOf(address _account) external view returns (uint256) {
+        console.log('balance %s', balances[_account]);
         return balances[_account];
     }
 
@@ -72,7 +73,7 @@ contract BullDogToken {
         return true;
     }
 
-    function allowance(address _to) public returns (uint256) {
+    function allowance(address _to) public view returns (uint256) {
         require(_to != address(0), "allowance:: address _to is 0");
         console.log('Alloweded %s tokens', allowed[msg.sender][_to]);
         return allowed[msg.sender][_to];

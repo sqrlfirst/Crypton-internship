@@ -2,6 +2,7 @@
 .vscode
 some_data.txt
 node_modules
+examples
 
 #Hardhat files
 cache
