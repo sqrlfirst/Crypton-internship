@@ -1,11 +1,11 @@
 //"SPDX-License-Identifier: MIT"
 pragma solidity >=0.8.4;
 
-import "openzeppelin-solidity/contracts/access/AccessControl.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/ERC20/ERC20.sol";
-import "openzeppelin-solidity/contracts/ERC20/SafeERC20.sol";
-import "openzeppelin-solidity/contracts/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 
 contract Staking is AccessControl, ReentrancyGuard {
@@ -20,13 +20,12 @@ contract Staking is AccessControl, ReentrancyGuard {
         uint256 rewardAllowed;  // amount of tokens that allowed to use
         uint256 rewardDebt;     // Debt of staking to staker 
         uint256 lastTimeUpdate;
-        uint64  lastPercentID;
+        uint256  lastPercentID;
     }
     
     // StakeInfo contain information for stake
     struct StakeInfo {
         uint256 _startTime; // time of staking start
-        uint256 _endTime; // time of staking end
         uint256 _unlockClaimTime;
         uint256 _rewardTotal;
         uint256 _totalStaked;
@@ -36,19 +35,18 @@ contract Staking is AccessControl, ReentrancyGuard {
         uint256 Value; 
         uint256 StartTime;
         uint256 EndTime;
-        uint64 NextID;
+        uint256 NextID;
     }
 
     mapping (address => Staker) _stakers;
-    mapping (uint64 => PercentInfo) _percentValues; // 
+    mapping (uint256 => PercentInfo) _percentValues; // 
 
     uint256 public startTime;
-    uint256 public endTime;
     uint256 public unlockClaimTime;
     uint256 public rewardTotal;
     uint256 public totalStaked;
 
-    uint64 private percentID;
+    uint256 public percentID;
     uint256 private constant weekInSec = 604800;
     uint256 private constant weekInSecX100 = 60480000;
 
@@ -64,18 +62,15 @@ contract Staking is AccessControl, ReentrancyGuard {
 
     constructor(
         uint256 _rewardTotal,
-        uint256 _startTime,
-        uint256 _unlockClaimTime,
+        uint256 _startTime
     ) public {
         // Give role of admin to contract deployer
         _setupRole(ADMIN, msg.sender);
 
         rewardTotal = _rewardTotal;
         startTime = _startTime;
-        endTime = _endTime;
         unlockClaimTime = _startTime + weekInSec;       // Claiming after one week
 
-        producedTime = _startTime;
     }
 
     function initialize(address _rewardToken, address _stakingToken) public {
@@ -84,7 +79,7 @@ contract Staking is AccessControl, ReentrancyGuard {
             "initialize:: caller is not an admin"
         );
         require(
-            address(stakingToken) == address(0) && address(rewardToken) == address(0),
+            address(_rewardToken) == address(0) && address(_stakingToken) == address(0),
             "initialize:: tokens addresses are zeros"
         );
 
@@ -100,7 +95,7 @@ contract Staking is AccessControl, ReentrancyGuard {
         Staker storage staker = _stakers[msg.sender];
 
         // Transfer specified amount of staking tokens to the contract 
-        IERC20(stakingToken).safeTransferFrom(
+        IERC20(tokenForStake).safeTransferFrom(
             msg.sender,
             address(this),
             _amount
@@ -131,9 +126,9 @@ contract Staking is AccessControl, ReentrancyGuard {
         staker.amount = staker.amount.sub(_amount);
         totalStaked = totalStaked.sub(_amount);
 
-        IERC20(stakingToken).safeTransfer(msg.sender, _amount);
+        IERC20(tokenForStake).safeTransfer(msg.sender, _amount);
 
-        emit TokensUnstaked(_amount, block.timestamp, msg.sender);
+        emit tokensUnstaked(_amount, block.timestamp, msg.sender);
     }
 
     function claim() public nonReentrant returns (bool) {
@@ -141,20 +136,33 @@ contract Staking is AccessControl, ReentrancyGuard {
         
         require(
             block.timestamp > unlockClaimTime,
-            "Staking: Claiming is locked"
+            "claim:: Claiming is locked"
         );
-        
+        require(
+            rewardTotal > 0,
+            "claim:: the owner hasn't got tokens for you"
+        );
+
         if (totalStaked > 0) {
             update();
         }
 
-        uint256 reward = calcReward(msg.sender, TokensPerStake);
+        uint256 reward;
+        if (rewardTotal > staker.rewardDebt) {
+            staker.rewardAllowed = staker.rewardDebt;
+            staker.rewardDebt = 0;
+            rewardTotal = rewardTotal.sub(staker.rewardAllowed);
+        }
+        else {
+            staker.rewardAllowed = rewardTotal;
+            staker.rewardDebt = staker.rewardDebt.sub(rewardTotal);
+            rewardTotal = 0;
+            emit rewardTokensIsEmpty(block.timestamp);
+        }   
+
         require(reward > 0, "Staking: Nothing to claim");
 
-        staker.distributed = staker.distributed.add(reward);
-        totalDistributed = totalDistributed.add(reward);
-
-        IERC20(rewardToken).safeTransfer(msg.sender, reward);
+        IERC20(tokenForReward).safeTransfer(msg.sender, reward);
         emit tokensClaimed(reward, block.timestamp, msg.sender);
         return true;
     }
@@ -166,8 +174,8 @@ contract Staking is AccessControl, ReentrancyGuard {
 
     function update() internal {
         Staker storage staker = _stakers[msg.sender];
-        PercentInfo storage percent = _percentValues[staker.lastPercentID]
-        if (staker.lastPercentID = percentID) {
+        PercentInfo storage percent = _percentValues[staker.lastPercentID];
+        if (staker.lastPercentID == percentID) {
             require(
                 percent.EndTime == 0,
                 "update:: normal_update error, there is new percent value"
@@ -177,20 +185,20 @@ contract Staking is AccessControl, ReentrancyGuard {
                 "update:: normal_update error, there is another percent value"
             );
             
-            staker.rewardDebt = rewardDebt.add(calcReward( staker.amount,
-                                                           percent.Value,
-                                                           staker.lastTimeUpdate,
-                                                           block.timestamp        ));
+            staker.rewardDebt = staker.rewardDebt.add(calcReward( staker.amount,
+                                                                  percent.Value,
+                                                                  staker.lastTimeUpdate,
+                                                                  block.timestamp        ));
             staker.lastTimeUpdate = block.timestamp;
         }
         else { // recursion 
             // don't invent something better, then using recursion calls for //
             // calculation accumulated profit on different percent intervals //
-            staker.rewardDebt = rewardDebt.add(calcReward( staker.amount,
-                                                           percent.Value,
-                                                           staker.lastTimeUpdate,
-                                                           percent.EndTime       ));
-            staker.lastTimeUpdate = add(percent.endTime, 1);
+            staker.rewardDebt = staker.rewardDebt.add(calcReward( staker.amount,
+                                                                  percent.Value,
+                                                                  staker.lastTimeUpdate,
+                                                                  percent.EndTime       ));
+            staker.lastTimeUpdate = percent.EndTime.add(1);
             staker.lastPercentID = percent.NextID;
             update();
         }
@@ -209,7 +217,7 @@ contract Staking is AccessControl, ReentrancyGuard {
          * reward_amount = ———————————————————————————————————————————————————
          *                                   weekInSec × 100
          ***********************************************************************/
-        uint256 reward_amount = div( mul( staked_amount, mul(percent, sub(time_now, time_start))), weekInSecX100); 
+        uint256 reward_amount = _staked_amount.mul(_percent.mul(_time_now - _time_start)).div(weekInSecX100);
         return reward_amount;
     }
 
@@ -227,8 +235,8 @@ contract Staking is AccessControl, ReentrancyGuard {
         percentPrev.NextID = percentID.add(1);
 
         percentNow.Value = _percent;
-        percentNow.startTime = block.timestamp.add(1);
-        percentNow.Endtime = 0;
+        percentNow.StartTime = block.timestamp.add(1);
+        percentNow.EndTime = 0;
         percentNow.NextID = 0;
     }
 
@@ -237,10 +245,8 @@ contract Staking is AccessControl, ReentrancyGuard {
      * VIEWING FUNCTIONS STARTS *
      ****************************/
 
-    function setReward(uin256 _amount) public {
-        require(hasRole(ADMIN_ROLE, msg.sender));
-        allProduced = produced();
-        producedTime = block.timestamp;
+    function setReward(uint256 _amount) public {
+        require(hasRole(ADMIN, msg.sender));
         rewardTotal = _amount;
     }
 
@@ -248,48 +254,46 @@ contract Staking is AccessControl, ReentrancyGuard {
         return totalStaked;
     }
 
-    function distributed() public view returns (uint256) {
-        return totalDistributed;
-    }
-
     function getInfoByAddress(address _address)
         external 
         view
         returns (
-            uint256 staked_,
-            uint256 claim_,
-            uint256 unstakeAmount_, 
-            uint256 unstakeTime_
+            uint256 _amount,
+            uint256 _rewardAllowed,
+            uint256 _rewardDebt,
+            uint256 _lastTimeUpdate,
+            uint256 _lastPercentValue
         )
     {
         Staker storage staker = _stakers[_address];
-        staked_ = staker.amount;
-        unstakeAmount_ = staker.unstakeAmount;
-        unstakeTime_ = staker.unstakeTime_;
-
-        claim_ = getClaim(_address);
-
-        return(staked_, claim_, unstakeAmount_, unstakeTime_)
+        
+        _amount = staker.amount;
+        _rewardAllowed = staker.rewardAllowed;
+        _rewardDebt = staker.rewardDebt;
+        _lastTimeUpdate = staker.lastTimeUpdate;
+        _lastPercentValue = _percentValues[staker.lastPercentID].Value;
+        
+        return(
+            _amount,
+            _rewardAllowed,
+            _rewardDebt,
+            _lastTimeUpdate,
+            _lastPercentValue
+        );
     }
 
     function getStakingInfo() 
-        extarnal
+        external
         view
         returns (
             StakeInfo memory info_
         )
     {
         info_ = StakeInfo({
-            _startTime: startTime, 
-            _endTime: endTime,
-            _distributionTime: distirbutionTime,
+            _startTime: startTime,
             _unlockClaimTime: unlockClaimTime,
-            _unstakeLockTime: unstakeLockTime,
             _rewardTotal: rewardTotal,
-            _totalStaked: totalStaked, 
-            _totalDistributed: totalDistributed,
-            _stakeTokenAddres: address(stakingToken),
-            _rewardTokenAddress: address(rewardToken)
+            _totalStaked: totalStaked
         });
 
         return info_;
