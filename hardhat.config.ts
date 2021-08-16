@@ -50,7 +50,7 @@ function createNetworkConfig(
     },
     chainId: chainIds[network],
     gas: "auto",
-    gasPrice: 50000000000, // gwei
+    gasPrice: 10000000000000, // gwei
     url,
   };
 }

@@ -70,10 +70,19 @@ contract Staking is AccessControl, ReentrancyGuard {
         rewardTotal = _rewardTotal;
         startTime = _startTime;
         unlockClaimTime = _startTime + weekInSec;       // Claiming after one week
-
+        percentID = 1;
+        _percentValues[percentID].Value = 15;
+        _percentValues[percentID].StartTime = startTime;
+        _percentValues[percentID].EndTime = 0;
+        _percentValues[percentID].NextID = 0;
+    
+        // tokenForReward = ERC20(0x521C9cCF16265e549EB5b97af055792bc50a73e3);
+        // tokenForStake = ERC20(0xdF21bDd8e2CD17c7d1C61000c5E3122136FeCd47);
     }
 
-    function initialize(address _rewardToken, address _stakingToken) public {
+    function initialize(address _rewardToken, address _stakingToken) 
+        external returns (bool)
+    {
         require(
             hasRole(ADMIN, msg.sender), 
             "initialize:: caller is not an admin"
@@ -85,6 +94,8 @@ contract Staking is AccessControl, ReentrancyGuard {
 
         tokenForReward = ERC20(_rewardToken);
         tokenForStake = ERC20(_stakingToken);
+
+        return true;
     } 
 
     function stake(uint256 _amount) public {
@@ -238,6 +249,7 @@ contract Staking is AccessControl, ReentrancyGuard {
         percentNow.StartTime = block.timestamp.add(1);
         percentNow.EndTime = 0;
         percentNow.NextID = 0;
+        return true;
     }
 
 
