@@ -1,9 +1,10 @@
 //"SPDX-License-Identifier: MIT"
 pragma solidity >=0.8.4;
 
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import 'hardhat/console.sol';
 
-contract BullDogToken {
+contract BullDogToken is ERC20{
 
     uint8 public decimals = 18;
     uint256 public totalSupply = 100000000 * 10**decimals;
