@@ -88,7 +88,8 @@ contract Staking is AccessControl, ReentrancyGuard {
             "initialize:: caller is not an admin"
         );
         require(
-            address(_rewardToken) == address(0) && address(_stakingToken) == address(0),
+            address(_rewardToken) != address(0) 
+            && address(_stakingToken) != address(0),
             "initialize:: tokens addresses are zeros"
         );
 
