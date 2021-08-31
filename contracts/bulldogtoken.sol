@@ -1,10 +1,10 @@
 //"SPDX-License-Identifier: MIT"
 pragma solidity >=0.8.4;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import 'hardhat/console.sol';
 
-contract BullDogToken is ERC20{
+
+contract BullDogToken {
 
     uint8 public decimals = 18;
     uint256 public totalSupply = 100000000 * 10**decimals;
@@ -26,20 +26,21 @@ contract BullDogToken is ERC20{
 
    
 
-    function balanceOf(address _account) external view returns (uint256) {
-        console.log('balance %s', balances[_account]);
+    function balanceOf(address _account) public view returns (uint256) {
+        // console.log('balance %s', balances[_account]);
         return balances[_account];
     }
 
     /* 
     token transfer during ICO
     */
-    function transfer(address _to, uint256 _amount) external {
+    function transfer(address _to, uint256 _amount) public returns (bool) {
         require(_to != address(0), "transfer:: address is 0");
         require(balances[msg.sender] >= _amount, "transfer:: You need more tokens");
         balances[msg.sender] -= _amount;
         balances[_to] += _amount;
         emit transfer_(msg.sender, _to, _amount);
+        return true;
     }
 
 
@@ -67,16 +68,16 @@ contract BullDogToken is ERC20{
         require(_to != address(0), "approve:: address _to is 0");
         require(balances[msg.sender] >= _value, "approve:: balance is low");
         allowed[msg.sender][_to] = _value;
-        console.log('Alloweded %s tokens', allowed[msg.sender][_to]);
-        console.log('Sender address', msg.sender);
-        console.log('Spender address', _to);
+        // console.log('Alloweded %s tokens', allowed[msg.sender][_to]);
+        // console.log('Sender address', msg.sender);
+        // console.log('Spender address', _to);
         emit approval(msg.sender, _to, _value);
         return true;
     }
 
     function allowance(address _to) public view returns (uint256) {
         require(_to != address(0), "allowance:: address _to is 0");
-        console.log('Alloweded %s tokens', allowed[msg.sender][_to]);
+        // console.log('Alloweded %s tokens', allowed[msg.sender][_to]);
         return allowed[msg.sender][_to];
     }
     

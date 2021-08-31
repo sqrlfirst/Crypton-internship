@@ -2,15 +2,15 @@
 pragma solidity >=0.8.4;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "./bulldogtoken.sol";
+import "./puppytoken.sol";
 
 
 contract Staking is AccessControl, ReentrancyGuard {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20;
+    //using SafeERC20 for IERC20;
 
     bytes32 public constant ADMIN = keccak256("ADMIN");
 
@@ -52,8 +52,8 @@ contract Staking is AccessControl, ReentrancyGuard {
 
     uint256 public minStakingAmount = 1e18;
 
-    ERC20 public tokenForStake;
-    ERC20 public tokenForReward;
+    address tokenForStake;
+    address tokenForReward;
 
     event tokensStaked(uint256 amount, uint256 time, address indexed sender);
     event tokensClaimed(uint256 amount, uint256 time, address indexed sender);
@@ -93,8 +93,8 @@ contract Staking is AccessControl, ReentrancyGuard {
             "initialize:: tokens addresses are zeros"
         );
 
-        tokenForReward = ERC20(_rewardToken);
-        tokenForStake = ERC20(_stakingToken);
+        tokenForReward = _rewardToken;
+        tokenForStake = _stakingToken;
 
         return true;
     } 
@@ -107,7 +107,7 @@ contract Staking is AccessControl, ReentrancyGuard {
         Staker storage staker = _stakers[msg.sender];
 
         // Transfer specified amount of staking tokens to the contract 
-        IERC20(tokenForStake).safeTransferFrom(
+        BullDogToken(tokenForStake).transferFrom(
             msg.sender,
             address(this),
             _amount
@@ -138,7 +138,7 @@ contract Staking is AccessControl, ReentrancyGuard {
         staker.amount = staker.amount.sub(_amount);
         totalStaked = totalStaked.sub(_amount);
 
-        IERC20(tokenForStake).safeTransfer(msg.sender, _amount);
+        BullDogToken(tokenForStake).transfer(msg.sender, _amount);
 
         emit tokensUnstaked(_amount, block.timestamp, msg.sender);
     }
@@ -174,7 +174,7 @@ contract Staking is AccessControl, ReentrancyGuard {
 
         require(reward > 0, "Staking: Nothing to claim");
 
-        IERC20(tokenForReward).safeTransfer(msg.sender, reward);
+        PuppyToken(tokenForReward).transfer(msg.sender, reward);
         emit tokensClaimed(reward, block.timestamp, msg.sender);
         return true;
     }

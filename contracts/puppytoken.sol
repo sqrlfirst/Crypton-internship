@@ -2,9 +2,8 @@
 pragma solidity >=0.8.4;
 
 import 'hardhat/console.sol';
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract PuppyToken is ERC20 {
+contract PuppyToken{
 
     uint8 public decimals = 18;
     uint256 public totalSupply = 100000000 * 10**decimals;
